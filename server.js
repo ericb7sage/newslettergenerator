@@ -5,16 +5,21 @@ import * as cheerio from "cheerio";
 const app = express();
 app.use(express.json({ limit: "200kb" }));
 
+const DEBUG = process.env.DEBUG === "1";
+
 // CORS so CodePen can call this proxy
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*"); // tighten later if desired
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS,GET");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 
-const DEBUG = process.env.DEBUG === "1";
+// Health route so Railway can verify the service responds
+app.get("/", (req, res) => {
+  res.status(200).send("ok");
+});
 
 function absUrl(maybeRelative) {
   if (!maybeRelative) return "";
@@ -25,9 +30,6 @@ function absUrl(maybeRelative) {
   if (s.startsWith("/")) return `https://7sage.com${s}`;
   return s;
 }
-
-console.log("RECEIVED url:", JSON.stringify(url));
-
 
 function firstText($, selectors) {
   for (const sel of selectors) {
@@ -58,11 +60,11 @@ function firstMatchFromLinks($, predicate) {
 }
 
 function findTopic($) {
-  // Try to find a topic/category link near top of page.
-  // We exclude:
+  // Try to find a topic/category link.
+  // Exclude:
   // - profile links
-  // - numeric discussion post links (/discussion/54829/...)
-  // - the /discussion root
+  // - numeric post links (/discussion/54829/...)
+  // - /discussion root
   const $topicLink = $('a[href^="/discussion/"]')
     .filter((_, a) => {
       const href = ($(a).attr("href") || "").trim();
@@ -80,8 +82,8 @@ function findTopic($) {
   };
 }
 
-function findUsername($) {
-  // Primary: discussion profile links
+function findUsername($, html) {
+  // 1) Most likely: profile links
   let username =
     firstText($, [
       'a[href^="/discussion/profile/"]',
@@ -91,42 +93,94 @@ function findUsername($) {
     ]) ||
     firstMatchFromLinks($, (href) => href.startsWith("/discussion/profile/"));
 
-  return username.trim();
+  if (username) return username.trim();
+
+  // 2) Fallback: sometimes username appears in meta text without profile link
+  // Try common patterns (best-effort)
+  username =
+    firstText($, [
+      '[class*="Author"]',
+      '[class*="author"]',
+      '[class*="Byline"]',
+      '[class*="byline"]'
+    ]);
+
+  if (username) return username.trim();
+
+  // 3) Last resort: try JSON-LD (if present)
+  try {
+    let ld = null;
+    $('script[type="application/ld+json"]').each((_, el) => {
+      if (ld) return;
+      const raw = $(el).text().trim();
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      const hit = arr.find(o => o && (o["@type"] === "DiscussionForumPosting" || o["@type"] === "Article" || o["@type"] === "WebPage"));
+      if (hit) ld = hit;
+    });
+    const ldAuthor = ld?.author?.name || ld?.author?.[0]?.name || "";
+    if (ldAuthor) return String(ldAuthor).trim();
+  } catch {}
+
+  return "";
 }
 
-function findAvatar($) {
-  // Prefer gravatar. If none, try common avatar-ish patterns.
-  const src =
-    firstAttr($, [
-      'img[src*="gravatar"]',
-      'img[class*="Avatar"][src]',
-      'img[class*="avatar"][src]',
-      'img[alt*="Avatar"][src]',
-      'img[alt*="avatar"][src]'
-    ], "src");
+function findAvatar($, html) {
+  // Prefer gravatar
+  let src = firstAttr($, [
+    'img[src*="gravatar"]',
+    'img[class*="Avatar"][src]',
+    'img[class*="avatar"][src]',
+    'img[alt*="Avatar"][src]',
+    'img[alt*="avatar"][src]'
+  ], "src");
 
-  return absUrl(src);
+  if (src) return absUrl(src);
+
+  // Fallback: scan for gravatar in raw HTML (sometimes in srcset)
+  const m = html.match(/https?:\/\/www\.gravatar\.com\/avatar\/[^"'\s)]+/i);
+  if (m) return m[0];
+
+  return "";
 }
 
 function findWhen($, html) {
-  // Best: <time datetime="...">
+  // Best: <time datetime>
   let when =
     firstAttr($, ["time[datetime]"], "datetime") ||
     firstText($, ["time"]);
 
-  // If time tags don't exist, sometimes it's plain text like "Edited 21 mins ago"
-  // We do a lightweight regex fallback on the raw HTML text content.
-  if (!when) {
-    const m = html.match(/\bEdited\s+\d+\s+\w+\s+ago\b/i) || html.match(/\b\d+\s+\w+\s+ago\b/i);
-    if (m) when = m[0];
-  }
+  if (when) return when.replace(/\s+/g, " ").trim();
 
-  return (when || "").replace(/\s+/g, " ").trim();
+  // Fallback: common relative text such as "Edited 21 mins ago"
+  const m = html.match(/\bEdited\s+\d+\s+\w+\s+ago\b/i) || html.match(/\b\d+\s+\w+\s+ago\b/i);
+  if (m) return m[0].replace(/\s+/g, " ").trim();
+
+  // Last resort: JSON-LD dates if present
+  try {
+    let ld = null;
+    $('script[type="application/ld+json"]').each((_, el) => {
+      if (ld) return;
+      const raw = $(el).text().trim();
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      const hit = arr.find(o => o && (o["@type"] === "DiscussionForumPosting" || o["@type"] === "Article" || o["@type"] === "WebPage"));
+      if (hit) ld = hit;
+    });
+    const date = ld?.dateModified || ld?.datePublished || "";
+    if (date) return String(date).trim();
+  } catch {}
+
+  return "";
 }
 
 app.post("/scrape-discussion", async (req, res) => {
   try {
     const url = String(req.body?.url || "").trim();
+
+    if (DEBUG) console.log("RECEIVED url:", JSON.stringify(url));
 
     if (!url.startsWith("https://7sage.com/discussion/")) {
       return res.status(400).json({
@@ -148,45 +202,28 @@ app.post("/scrape-discussion", async (req, res) => {
     }
 
     const html = await r.text();
-
-	if (DEBUG) {
-  console.log("DEBUG signals:", {
-    hasProfileLinks: html.includes("/discussion/profile/"),
-    hasGravatar: html.includes("gravatar"),
-    hasTimeTag: html.includes("<time"),
-    hasEditedAgo: /Edited\s+\d+/.test(html),
-  });
-
-  // show a few surrounding characters if we can find likely author markers
-  const idx = html.indexOf("/discussion/profile/");
-  console.log("DEBUG profile link index:", idx);
-  if (idx !== -1) console.log("DEBUG profile link context:", html.slice(Math.max(0, idx - 200), idx + 200));
-}
-
-
     const $ = cheerio.load(html);
 
-    // Title: H1 is usually reliable
     const title = ($("h1").first().text() || "").trim() || ($("title").text() || "").trim();
 
     const { topic, topicUrl } = findTopic($);
-    const username = findUsername($);
-    const avatar = findAvatar($);
+    const username = findUsername($, html);
+    const avatar = findAvatar($, html);
     const when = findWhen($, html);
 
     if (DEBUG) {
-      console.log("DEBUG scrape:", {
-        url,
-        title,
-        topic,
-        username,
-        avatar: Boolean(avatar),
-        when
-      });
       console.log("DEBUG signals:", {
         hasProfileLinks: html.includes("/discussion/profile/"),
-        hasGravatar: html.includes("gravatar"),
-        hasTimeTag: html.includes("<time")
+        hasGravatar: html.toLowerCase().includes("gravatar"),
+        hasTimeTag: html.includes("<time"),
+        hasEditedAgo: /Edited\s+\d+/i.test(html)
+      });
+      console.log("DEBUG scraped:", {
+        title,
+        topic,
+        username: username || "(blank)",
+        avatar: avatar ? "(found)" : "(blank)",
+        when: when || "(blank)"
       });
     }
 
