@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Newsletter Generator</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin:0; background:#f6f7f8; }
+    header { padding:16px 20px; background:#111827; color:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    header h1 { margin:0; font-size:16px; }
+    header .meta { font-size:12px; color:#cbd5e1; }
+
+    .wrap { display:grid; grid-template-columns: 520px 1fr; gap:14px; padding:14px; }
+    .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
+    .panel h2 { font-size:13px; margin:0 0 10px; color:#111827; }
+
+    label { display:block; font-size:12px; color:#374151; margin-bottom:6px; }
+    input, textarea, select {
+      width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:10px;
+      padding:10px; font-size:13px; outline:none; background:#fff;
+    }
+    textarea { min-height:84px; resize:vertical; }
+    .row { margin-bottom:12px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; }
+    button {
+      border:0; border-radius:10px; padding:10px 12px; font-weight:700; cursor:pointer;
+      background:#111827; color:#fff; font-size:13px;
+    }
+    button.secondary { background:#e5e7eb; color:#111827; }
+    button.danger { background:#b91c1c; }
+    button.tiny { padding:7px 9px; font-size:12px; border-radius:9px; }
+    .small { font-size:12px; color:#6b7280; line-height:1.35; }
+
+    .sticky { position:sticky; top:14px; align-self:start; }
+    iframe { width:100%; height: calc(100vh - 160px); border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
+
+    details { border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#fff; }
+    summary { cursor:pointer; font-weight:800; color:#111827; font-size:13px; }
+
+    .list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+    .item { border:1px solid #e5e7eb; border-radius:12px; padding:10px; }
+    .itemHead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }
+    .itemHead strong { font-size:12px; color:#111827; }
+    .itemHead .actions { display:flex; gap:8px; align-items:center; }
+
+    .sectionList { display:flex; flex-direction:column; gap:8px; }
+    .sectionRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
+    .sectionRow .left { display:flex; align-items:center; gap:10px; }
+    .sectionRow .right { display:flex; align-items:center; gap:8px; }
+
+    .pill { display:inline-block; padding:2px 6px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid #e5e7eb; background:#fff; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
+    .output { width:100%; min-height: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size: 12px; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Newsletter Generator</h1>
+    <div class="meta">Low-code presets + repeatable sections • Stored in localStorage</div>
+  </div>
+  <div class="btns">
+    <button class="secondary" id="exportBtn">Export JSON</button>
+    <button class="secondary" id="importBtn">Import JSON</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT -->
+  <div class="panel sticky">
+    <h2>Admin + Inputs</h2>
+
+    <details class="row">
+      <summary>Admin panel (low-code presets)</summary>
+      <div class="small" style="margin:10px 0;">
+        These lists drive dropdowns in the editor. Add/edit/remove items here. Changes persist.
+      </div>
+
+      <div class="row">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:800; font-size:12px;">Mood presets</div>
+          <button class="secondary tiny" type="button" id="addMoodBtn">+ Add</button>
+        </div>
+        <div id="moodsAdmin" class="list"></div>
+      </div>
+
+      <div class="row">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:800; font-size:12px;">Topic presets</div>
+          <button class="secondary tiny" type="button" id="addTopicBtn">+ Add</button>
+        </div>
+        <div id="topicsAdmin" class="list"></div>
+      </div>
+
+      <div class="row">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:800; font-size:12px;">Instructor presets</div>
+          <button class="secondary tiny" type="button" id="addInstructorBtn">+ Add</button>
+        </div>
+        <div id="instructorsAdmin" class="list"></div>
+      </div>
+
+      <div class="row">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:800; font-size:12px;">Difficulty presets</div>
+          <button class="secondary tiny" type="button" id="addDifficultyBtn">+ Add</button>
+        </div>
+        <div id="difficultiesAdmin" class="list"></div>
+      </div>
+
+      <div class="btns">
+        <button id="savePresetsBtn">Save presets</button>
+        <button class="secondary" id="resetPresetsBtn">Reset presets</button>
+      </div>
+    </details>
+
+    <details class="row" open>
+      <summary>Sections (toggle + reorder)</summary>
+      <div class="small" style="margin:10px 0;">
+        
+      </div>
+      <div id="sectionsUI" class="sectionList"></div>
+    </details>
+
+    <div class="row">
+      <label>Preheader (hidden preview text)</label>
+      <input id="preheader" value="" />
+    </div>
+
+    <details class="row" open>
+      <summary>LSAT Podcast</summary>
+      <div class="row" style="margin-top:10px;"><label>Header label</label><input id="lsat_header" value="LSAT Podcast" /></div>
+      <div class="row"><label>Quote / kicker</label><input id="lsat_quote" value="" /></div>
+      <div class="grid">
+        <div class="row"><label>YouTube URL</label><input id="lsat_youtube_url" value="" /></div>
+        <div class="row"><label>Spotify URL</label><input id="lsat_spotify_url" value="" /></div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Image URL</label><input id="lsat_img" value="" /></div>
+        <div class="row"><label>Image alt</label><input id="lsat_alt" value="" /></div>
+      </div>
+      <div class="row"><label>Description</label><textarea id="lsat_desc"></textarea></div>
+      <div class="btns">
+        <button class="secondary" type="button" id="clearLsatBtn">Clear</button>
+      </div>
+    </details>
+
+    <details class="row" open>
+      <summary>Admissions Podcast</summary>
+      <div class="row" style="margin-top:10px;"><label>Header label</label><input id="adm_header" value="Admissions Podcast" /></div>
+      <div class="grid">
+        <div class="row"><label>YouTube URL</label><input id="adm_youtube_url" value="" /></div>
+        <div class="row"><label>Spotify URL</label><input id="adm_spotify_url" value="" /></div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Image URL</label><input id="adm_img" value="" /></div>
+        <div class="row"><label>Image alt</label><input id="adm_alt" value="" /></div>
+      </div>
+      <div class="row"><label>Intro paragraph</label><textarea id="adm_intro"></textarea></div>
+      <div class="row"><label>Description (main)</label><textarea id="adm_desc"></textarea></div>
+      <div class="row"><label>Bullets (one per line)</label><textarea id="adm_bullets"></textarea></div>
+      <div class="btns">
+        <button class="secondary" type="button" id="clearAdmBtn">Clear</button>
+      </div>
+    </details>
+
+    <details class="row" open>
+      <summary>Admissions Blog</summary>
+      <div class="row" style="margin-top:10px;"><label>Header label</label><input id="blog_header" value="Admissions Blog" /></div>
+      <div class="grid">
+        <div class="row"><label>Post title</label><input id="blog_title" value="" /></div>
+        <div class="row"><label>Post URL</label><input id="blog_url" value="" /></div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Author name</label><input id="blog_author" value="" /></div>
+        <div class="row"><label>Author avatar URL</label><input id="blog_avatar" value="" /></div>
+      </div>
+      <div class="row"><label>Description</label><textarea id="blog_desc"></textarea></div>
+      <div class="row"><label>CTA label</label><input id="blog_cta" value="Read more" /></div>
+      <div class="btns">
+        <button class="secondary" type="button" id="clearBlogBtn">Clear</button>
+      </div>
+    </details>
+
+    <details class="row" open>
+      <summary>Discussion Forum Roundup</summary>
+      <div class="small" style="margin-top:8px;">
+        Tip: paste a 7Sage discussion URL, then click <span class="pill">Profile URL</span> to auto-fill the row.
+      </div>
+      <div class="btns" style="margin-top:10px;">
+        <button class="secondary" type="button" id="addDiscussionBtn">+ Add post</button>
+        <button class="secondary" type="button" id="clearAllDiscussionBtn">Clear all</button>
+      </div>
+      <div id="discussionList" class="list"></div>
+    </details>
+
+    <details class="row" open>
+      <summary>Free Live Classes</summary>
+      <div class="btns" style="margin-top:10px;">
+        <button class="secondary" type="button" id="addClassBtn">+ Add row</button>
+        <button class="secondary" type="button" id="clearAllClassesBtn">Clear all</button>
+      </div>
+      <div id="classesList" class="list"></div>
+    </details>
+
+    <details class="row" open>
+      <summary>Custom Links Section (low-code)</summary>
+      <div class="btns" style="margin-top:10px;">
+        <button class="secondary" type="button" id="addCustomLinkBtn">+ Add link</button>
+        <button class="secondary" type="button" id="clearAllCustomLinksBtn">Clear all</button>
+      </div>
+      <div id="customLinksList" class="list"></div>
+    </details>
+
+    <div class="row">
+      <label>Unsubscribe URL (provider token)</label>
+      <input id="unsubscribe_url" value="{{unsubscribe_url}}" />
+    </div>
+
+    <div class="btns">
+      <button id="generateBtn">Generate HTML</button>
+      <button class="secondary" id="copyBtn">Copy HTML</button>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <label>Output HTML</label>
+      <textarea id="output" class="output" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel">
+    <h2>Preview</h2>
+    <iframe id="preview" title="preview"></iframe>
+  </div>
+</div>
+
+<script>
+/** ------------------------ Railway proxy endpoint ------------------------ **/
+const DISCUSSION_PROXY_ENDPOINT =
+  "https://newslettergenerator-production.up.railway.app/scrape-discussion";
+  
+ /** ------------------------ Railway presets API ------------------------ **/
+const PRESETS_API_BASE = "https://newslettergenerator-production.up.railway.app";
+const PRESET_KEY = "7sage-newsletter";
+
+
+/** ------------------------ storage keys ------------------------ **/
+const LS_KEYS = {
+  presets: "nlgen_presets_v2",
+  state: "nlgen_state_v2"
+};
+
+/** ------------------------ defaults (BLANK) ------------------------ **/
+const DEFAULT_PRESETS = {
+  moods: [
+    { id:"motivated", label:"💪 Motivated", bg:"#ebf7fb", text:"#344054" },
+    { id:"frustrated", label:"😖 Frustrated", bg:"#f8d4e4", text:"#344054" },
+    { id:"happy", label:"😊 Happy", bg:"#f0fdf9", text:"#344054" },
+    { id:"none", label:"(None)", bg:"#ffffff", text:"#344054" }
+  ],
+  topics: [
+    { id:"general", label:"General" },
+    { id:"lsat", label:"LSAT" },
+    { id:"admissions", label:"Admissions" }
+  ],
+  instructors: [
+    { id:"instructor_1", name:"Instructor 1", avatar:"" }
+  ],
+  difficulties: [
+    { id:"basic", label:"Basic", filledCount:1, filled:"#2a6c7f", empty:"#e5eef2" },
+    { id:"intermediate", label:"Intermediate", filledCount:2, filled:"#15b79e", empty:"#e5eef2" },
+    { id:"advanced", label:"Advanced", filledCount:3, filled:"#227f9c", empty:"#e5eef2" }
+  ]
+};
+
+const DEFAULT_STATE = {
+  sections: [
+    { id:"lsatPodcast", label:"LSAT Podcast", enabled:true },
+    { id:"admissionsPodcast", label:"Admissions Podcast", enabled:true },
+    { id:"admissionsBlog", label:"Admissions Blog", enabled:true },
+    { id:"discussion", label:"Discussion Forum Roundup", enabled:true },
+    { id:"liveClasses", label:"Free Live Classes", enabled:true },
+    { id:"customLinks", label:"Custom Links Section", enabled:true }
+  ],
+  discussion: [
+    { avatar:"", topicId:"general", when:"", username:"", moodId:"none", title:"", url:"" }
+  ],
+  classes: [
+    { time:"", date:"", instructorId:"instructor_1", title:"", url:"", difficultyId:"basic" }
+  ],
+  customLinks: [
+    { prompt:"", linkText:"", url:"" }
+  ]
+};
+
+/** ------------------------ state ------------------------ **/
+let presets = deepClone(DEFAULT_PRESETS);
+let state = loadState();
+
+/** ------------------------ utils ------------------------ **/
+function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
+
+  
+  /** ------------------------ shared presets API ------------------------ **/
+async function apiLoadPresets() {
+  const res = await fetch(
+    `${PRESETS_API_BASE}/presets?key=${encodeURIComponent(PRESET_KEY)}`
+  );
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Failed to load presets");
+  return json.data; // may be null
+}
+
+async function apiSavePresets(data) {
+  const res = await fetch(`${PRESETS_API_BASE}/presets`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key: PRESET_KEY, data })
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Failed to save presets");
+}
+
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(LS_KEYS.state)) || deepClone(DEFAULT_STATE); }
+  catch { return deepClone(DEFAULT_STATE); }
+}
+function saveState(){ localStorage.setItem(LS_KEYS.state, JSON.stringify(state)); }
+
+function escHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function escAttr(str) { return escHtml(str).replace(/\s+/g, " ").trim(); }
+function paragraphsToBr(text) {
+  const safe = escHtml(text).trim();
+  if (!safe) return "";
+  return safe.split(/\n\s*\n/g).map(p => p.replace(/\n/g, "<br>")).join("<br><br>");
+}
+function linesToLi(text) {
+  const lines = String(text ?? "").split("\n").map(s => s.trim()).filter(Boolean);
+  return lines.map(li => `<li>${escHtml(li)}</li>`).join("\n");
+}
+function byId(list, id){ return list.find(x => x.id === id); }
+function slugify(s){
+  return String(s ?? "").toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || ("id_" + Math.random().toString(16).slice(2));
+}
+
+/** ------------------------ discussion scraping helpers ------------------------ **/
+async function profileDiscussionUrl(url){
+  const clean = String(url || "").trim();
+  if (!clean) throw new Error("Paste a 7Sage discussion URL first.");
+
+  const res = await fetch(DISCUSSION_PROXY_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: clean })
+  });
+
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Profile failed");
+  return json.data; // { url,title,topic,topicUrl,username,avatar,when }
+}
+
+function findTopicIdFromScrapedLabel(label){
+  const needle = String(label || "").trim().toLowerCase();
+  if (!needle) return "";
+  const hit = presets.topics.find(t => String(t.label || "").trim().toLowerCase() === needle);
+  return hit?.id || "";
+}
+
+/** ------------------------ sections UI ------------------------ **/
+function renderSectionsUI(){
+  const root = document.getElementById("sectionsUI");
+  root.innerHTML = "";
+  state.sections.forEach((s, idx) => {
+    const row = document.createElement("div");
+    row.className = "sectionRow";
+    row.innerHTML = `
+      <div class="left">
+        <input type="checkbox" ${s.enabled ? "checked" : ""} data-sec-toggle="${s.id}" style="width:auto;">
+        <div>
+          <div style="font-weight:900; font-size:12px; color:#111827;">${escHtml(s.label)}</div>
+          <div class="small">${escHtml(s.id)}</div>
+        </div>
+      </div>
+      <div class="right">
+        <button class="secondary tiny" data-up="${idx}">↑</button>
+        <button class="secondary tiny" data-down="${idx}">↓</button>
+      </div>
+    `;
+    root.appendChild(row);
+  });
+
+  root.querySelectorAll("[data-sec-toggle]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const s = state.sections.find(x => x.id === cb.dataset.secToggle);
+      if (!s) return;
+      s.enabled = cb.checked;
+      saveState();
+    });
+  });
+
+  root.querySelectorAll("[data-up]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.up);
+      if (i <= 0) return;
+      const a = state.sections;
+      [a[i-1], a[i]] = [a[i], a[i-1]];
+      saveState();
+      renderSectionsUI();
+    });
+  });
+  root.querySelectorAll("[data-down]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.down);
+      const a = state.sections;
+      if (i >= a.length - 1) return;
+      [a[i+1], a[i]] = [a[i], a[i+1]];
+      saveState();
+      renderSectionsUI();
+    });
+  });
+}
+
+/** ------------------------ low-code admin renderers ------------------------ **/
+function renderAdminMoods(){
+  const root = document.getElementById("moodsAdmin");
+  root.innerHTML = "";
+  presets.moods.forEach((m, idx) => {
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>${escHtml(m.id)}</strong>
+        <div class="actions">
+          <span class="pill" style="background:${escAttr(m.bg)}; color:${escAttr(m.text)};">${escHtml(m.label)}</span>
+          <button class="danger tiny" type="button" data-del-mood="${idx}">Remove</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Label</label><input data-mood-k="label" data-i="${idx}" value="${escAttr(m.label)}"></div>
+        <div class="row"><label>ID</label><input data-mood-k="id" data-i="${idx}" value="${escAttr(m.id)}"></div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>BG</label><input data-mood-k="bg" data-i="${idx}" value="${escAttr(m.bg)}"></div>
+        <div class="row"><label>Text</label><input data-mood-k="text" data-i="${idx}" value="${escAttr(m.text)}"></div>
+      </div>
+    `;
+    root.appendChild(el);
+  });
+
+  root.querySelectorAll("input[data-mood-k]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      presets.moods[i][inp.dataset.moodK] = inp.value;
+    });
+  });
+  root.querySelectorAll("[data-del-mood]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.delMood);
+      presets.moods.splice(i, 1);
+      renderAdminMoods();
+      renderDiscussionUI();
+    });
+  });
+}
+
+function renderAdminTopics(){
+  const root = document.getElementById("topicsAdmin");
+  root.innerHTML = "";
+  presets.topics.forEach((t, idx) => {
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>${escHtml(t.id)}</strong>
+        <div class="actions">
+          <span class="pill">${escHtml(t.label)}</span>
+          <button class="danger tiny" type="button" data-del-topic="${idx}">Remove</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Label</label><input data-topic-k="label" data-i="${idx}" value="${escAttr(t.label)}"></div>
+        <div class="row"><label>ID</label><input data-topic-k="id" data-i="${idx}" value="${escAttr(t.id)}"></div>
+      </div>
+    `;
+    root.appendChild(el);
+  });
+
+  root.querySelectorAll("input[data-topic-k]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      presets.topics[i][inp.dataset.topicK] = inp.value;
+    });
+  });
+  root.querySelectorAll("[data-del-topic]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.delTopic);
+      presets.topics.splice(i, 1);
+      renderAdminTopics();
+      renderDiscussionUI();
+    });
+  });
+}
+
+function renderAdminInstructors(){
+  const root = document.getElementById("instructorsAdmin");
+  root.innerHTML = "";
+  presets.instructors.forEach((ins, idx) => {
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>${escHtml(ins.id)}</strong>
+        <div class="actions">
+          ${ins.avatar ? `<img src="${escAttr(ins.avatar)}" width="24" height="24" style="border-radius:999px; border:1px solid #e5e7eb;" alt="">` : ""}
+          <span class="pill">${escHtml(ins.name)}</span>
+          <button class="danger tiny" type="button" data-del-ins="${idx}">Remove</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Name</label><input data-ins-k="name" data-i="${idx}" value="${escAttr(ins.name)}"></div>
+        <div class="row"><label>ID</label><input data-ins-k="id" data-i="${idx}" value="${escAttr(ins.id)}"></div>
+      </div>
+      <div class="row"><label>Avatar URL</label><input data-ins-k="avatar" data-i="${idx}" value="${escAttr(ins.avatar)}"></div>
+    `;
+    root.appendChild(el);
+  });
+
+  root.querySelectorAll("input[data-ins-k]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      presets.instructors[i][inp.dataset.insK] = inp.value;
+    });
+  });
+  root.querySelectorAll("[data-del-ins]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.delIns);
+      presets.instructors.splice(i, 1);
+      renderAdminInstructors();
+      renderClassesUI();
+    });
+  });
+}
+
+function renderAdminDifficulties(){
+  const root = document.getElementById("difficultiesAdmin");
+  root.innerHTML = "";
+  presets.difficulties.forEach((d, idx) => {
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>${escHtml(d.id)}</strong>
+        <div class="actions">
+          <span class="pill">${escHtml(d.label)}</span>
+          <button class="danger tiny" type="button" data-del-diff="${idx}">Remove</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Label</label><input data-diff-k="label" data-i="${idx}" value="${escAttr(d.label)}"></div>
+        <div class="row"><label>ID</label><input data-diff-k="id" data-i="${idx}" value="${escAttr(d.id)}"></div>
+      </div>
+      <div class="grid">
+        <div class="row"><label>Filled count (1–3)</label><input data-diff-k="filledCount" data-i="${idx}" value="${escAttr(d.filledCount)}"></div>
+        <div class="row"><label>Filled color</label><input data-diff-k="filled" data-i="${idx}" value="${escAttr(d.filled)}"></div>
+      </div>
+      <div class="row"><label>Empty color</label><input data-diff-k="empty" data-i="${idx}" value="${escAttr(d.empty)}"></div>
+    `;
+    root.appendChild(el);
+  });
+
+  root.querySelectorAll("input[data-diff-k]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      const k = inp.dataset.diffK;
+      presets.difficulties[i][k] = (k === "filledCount") ? Number(inp.value) : inp.value;
+    });
+  });
+  root.querySelectorAll("[data-del-diff]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.delDiff);
+      presets.difficulties.splice(i, 1);
+      renderAdminDifficulties();
+      renderClassesUI();
+    });
+  });
+}
+
+function renderAdminAll(){
+  renderAdminMoods();
+  renderAdminTopics();
+  renderAdminInstructors();
+  renderAdminDifficulties();
+}
+
+document.getElementById("addMoodBtn").addEventListener("click", () => {
+  presets.moods.push({ id: "mood_" + (presets.moods.length+1), label:"", bg:"#ffffff", text:"#344054" });
+  renderAdminMoods();
+});
+document.getElementById("addTopicBtn").addEventListener("click", () => {
+  presets.topics.push({ id: "topic_" + (presets.topics.length+1), label:"" });
+  renderAdminTopics();
+});
+document.getElementById("addInstructorBtn").addEventListener("click", () => {
+  presets.instructors.push({ id: "instructor_" + (presets.instructors.length+1), name:"", avatar:"" });
+  renderAdminInstructors();
+});
+document.getElementById("addDifficultyBtn").addEventListener("click", () => {
+  presets.difficulties.push({ id: "difficulty_" + (presets.difficulties.length+1), label:"", filledCount:1, filled:"#2a6c7f", empty:"#e5eef2" });
+  renderAdminDifficulties();
+});
+
+document.getElementById("savePresetsBtn").addEventListener("click", async () => {
+  // sanitize IDs if blank
+  presets.moods.forEach(m => { if (!m.id.trim()) m.id = slugify(m.label || "mood"); });
+  presets.topics.forEach(t => { if (!t.id.trim()) t.id = slugify(t.label || "topic"); });
+  presets.instructors.forEach(i => { if (!i.id.trim()) i.id = slugify(i.name || "instructor"); });
+  presets.difficulties.forEach(d => { if (!d.id.trim()) d.id = slugify(d.label || "difficulty"); });
+
+  // fix dangling references
+  state.discussion.forEach(p => {
+    if (!byId(presets.moods, p.moodId)) p.moodId = "none";
+    if (!byId(presets.topics, p.topicId)) p.topicId = presets.topics[0]?.id || "";
+  });
+  state.classes.forEach(r => {
+    if (!byId(presets.instructors, r.instructorId)) r.instructorId = presets.instructors[0]?.id || "";
+    if (!byId(presets.difficulties, r.difficultyId)) r.difficultyId = presets.difficulties[0]?.id || "";
+  });
+
+  try {
+    await apiSavePresets(presets);
+    alert("Presets saved (shared).");
+  } catch (e) {
+    alert("Save failed: " + e.message);
+    return;
+  }
+
+  saveState();
+  renderDiscussionUI();
+  renderClassesUI();
+});
+
+
+
+
+/** ------------------------ Discussion UI (topic dropdown + mood dropdown + Profile URL) ------------------------ **/
+function blankDiscussionPost(){
+  return { avatar:"", topicId: presets.topics[0]?.id || "", when:"", username:"", moodId:"none", title:"", url:"" };
+}
+function renderDiscussionUI(){
+  const root = document.getElementById("discussionList");
+  root.innerHTML = "";
+
+  const topicOptions = presets.topics.map(t => `<option value="${escAttr(t.id)}">${escHtml(t.label)}</option>`).join("");
+  const moodOptions = presets.moods.map(m => `<option value="${escAttr(m.id)}">${escHtml(m.label)}</option>`).join("");
+
+  state.discussion.forEach((p, idx) => {
+    const mood = byId(presets.moods, p.moodId) || byId(presets.moods, "none");
+    const topic = byId(presets.topics, p.topicId);
+
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>Post ${idx+1}</strong>
+        <div class="actions">
+          ${topic ? `<span class="pill">${escHtml(topic.label)}</span>` : ""}
+          ${mood ? `<span class="pill" style="background:${escAttr(mood.bg)}; color:${escAttr(mood.text)};">${escHtml(mood.label)}</span>` : ""}
+          <button class="secondary tiny" type="button" data-profile-post="${idx}">Profile URL</button>
+          <button class="secondary tiny" type="button" data-clear-post="${idx}">Clear</button>
+          <button class="danger tiny" type="button" data-remove-post="${idx}">Remove</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="row">
+          <label>Topic</label>
+          <select data-k="topicId" data-i="${idx}">
+            ${topicOptions}
+          </select>
+        </div>
+        <div class="row">
+          <label>Mood</label>
+          <select data-k="moodId" data-i="${idx}">
+            ${moodOptions}
+          </select>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="row"><label>Day label</label><input data-k="when" data-i="${idx}" value="${escAttr(p.when)}"></div>
+        <div class="row"><label>Username</label><input data-k="username" data-i="${idx}" value="${escAttr(p.username)}"></div>
+      </div>
+
+      <div class="grid">
+        <div class="row"><label>Avatar URL</label><input data-k="avatar" data-i="${idx}" value="${escAttr(p.avatar)}"></div>
+        <div class="row"><label>URL</label><input data-k="url" data-i="${idx}" value="${escAttr(p.url)}" placeholder="https://7sage.com/discussion/..."></div>
+      </div>
+
+      <div class="row"><label>Title</label><input data-k="title" data-i="${idx}" value="${escAttr(p.title)}"></div>
+    `;
+    root.appendChild(el);
+    el.querySelector(`select[data-k="topicId"][data-i="${idx}"]`).value = p.topicId || (presets.topics[0]?.id || "");
+    el.querySelector(`select[data-k="moodId"][data-i="${idx}"]`).value = p.moodId || "none";
+  });
+
+  // Input updates (kept as-is; re-renders to refresh pills)
+  root.querySelectorAll("input, select").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      const k = inp.dataset.k;
+      state.discussion[i][k] = inp.value;
+      saveState();
+      renderDiscussionUI();
+    });
+  });
+
+  // Clear/remove handlers
+  root.querySelectorAll("[data-clear-post]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.clearPost);
+      state.discussion[i] = blankDiscussionPost();
+      saveState();
+      renderDiscussionUI();
+    });
+  });
+
+  root.querySelectorAll("[data-remove-post]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.removePost);
+      state.discussion.splice(i, 1);
+      if (state.discussion.length === 0) state.discussion.push(blankDiscussionPost());
+      saveState();
+      renderDiscussionUI();
+    });
+  });
+
+  // ✅ Profile URL handlers
+  root.querySelectorAll("[data-profile-post]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const i = Number(btn.dataset.profilePost);
+      const url = state.discussion[i]?.url || "";
+      const old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Profiling…";
+      try {
+        const data = await profileDiscussionUrl(url);
+
+        // Update fields from scrape
+        state.discussion[i].url = data.url || state.discussion[i].url;
+        state.discussion[i].title = data.title || "";
+        state.discussion[i].username = data.username || "";
+        state.discussion[i].when = data.when || "";
+        state.discussion[i].avatar = data.avatar || "";
+
+        // Map topic label -> topicId if possible
+        const mapped = findTopicIdFromScrapedLabel(data.topic);
+        if (mapped) state.discussion[i].topicId = mapped;
+
+        saveState();
+        renderDiscussionUI();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
+    });
+  });
+}
+
+document.getElementById("addDiscussionBtn").addEventListener("click", () => {
+  state.discussion.push(blankDiscussionPost());
+  saveState();
+  renderDiscussionUI();
+});
+document.getElementById("clearAllDiscussionBtn").addEventListener("click", () => {
+  state.discussion = [blankDiscussionPost()];
+  saveState();
+  renderDiscussionUI();
+});
+
+/** ------------------------ Classes UI ------------------------ **/
+function blankClassRow(){
+  return {
+    time:"", date:"",
+    instructorId: presets.instructors[0]?.id || "",
+    title:"", url:"",
+    difficultyId: presets.difficulties[0]?.id || "basic"
+  };
+}
+function renderClassesUI(){
+  const root = document.getElementById("classesList");
+  root.innerHTML = "";
+
+  const instructorOptions = presets.instructors.map(i => `<option value="${escAttr(i.id)}">${escHtml(i.name || i.id)}</option>`).join("");
+  const difficultyOptions = presets.difficulties.map(d => `<option value="${escAttr(d.id)}">${escHtml(d.label || d.id)}</option>`).join("");
+
+  state.classes.forEach((c, idx) => {
+    const instr = byId(presets.instructors, c.instructorId);
+    const diff = byId(presets.difficulties, c.difficultyId);
+
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>Class ${idx+1}</strong>
+        <div class="actions">
+          ${instr?.avatar ? `<img src="${escAttr(instr.avatar)}" width="24" height="24" style="border-radius:999px; border:1px solid #e5e7eb;" alt="">` : ""}
+          ${diff?.label ? `<span class="pill">${escHtml(diff.label)}</span>` : ""}
+          <button class="secondary tiny" type="button" data-clear-class="${idx}">Clear</button>
+          <button class="danger tiny" type="button" data-remove-class="${idx}">Remove</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="row"><label>Time</label><input data-k="time" data-i="${idx}" value="${escAttr(c.time)}"></div>
+        <div class="row"><label>Date</label><input data-k="date" data-i="${idx}" value="${escAttr(c.date)}"></div>
+      </div>
+
+      <div class="grid">
+        <div class="row"><label>Instructor</label>
+          <select data-k="instructorId" data-i="${idx}">${instructorOptions}</select>
+        </div>
+        <div class="row"><label>Difficulty</label>
+          <select data-k="difficultyId" data-i="${idx}">${difficultyOptions}</select>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="row"><label>Title</label><input data-k="title" data-i="${idx}" value="${escAttr(c.title)}"></div>
+        <div class="row"><label>URL</label><input data-k="url" data-i="${idx}" value="${escAttr(c.url)}"></div>
+      </div>
+    `;
+    root.appendChild(el);
+
+    el.querySelector(`select[data-k="instructorId"][data-i="${idx}"]`).value = c.instructorId || (presets.instructors[0]?.id || "");
+    el.querySelector(`select[data-k="difficultyId"][data-i="${idx}"]`).value = c.difficultyId || (presets.difficulties[0]?.id || "basic");
+  });
+
+  root.querySelectorAll("input, select").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      const k = inp.dataset.k;
+      state.classes[i][k] = inp.value;
+      saveState();
+    });
+  });
+
+  root.querySelectorAll("[data-clear-class]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.clearClass);
+      state.classes[i] = blankClassRow();
+      saveState();
+      renderClassesUI();
+    });
+  });
+
+  root.querySelectorAll("[data-remove-class]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.removeClass);
+      state.classes.splice(i, 1);
+      if (state.classes.length === 0) state.classes.push(blankClassRow());
+      saveState();
+      renderClassesUI();
+    });
+  });
+}
+
+document.getElementById("addClassBtn").addEventListener("click", () => {
+  state.classes.push(blankClassRow());
+  saveState();
+  renderClassesUI();
+});
+document.getElementById("clearAllClassesBtn").addEventListener("click", () => {
+  state.classes = [blankClassRow()];
+  saveState();
+  renderClassesUI();
+});
+
+/** ------------------------ Custom links low-code ------------------------ **/
+function blankCustomLink(){ return { prompt:"", linkText:"", url:"" }; }
+function renderCustomLinksUI(){
+  const root = document.getElementById("customLinksList");
+  root.innerHTML = "";
+
+  state.customLinks.forEach((x, idx) => {
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="itemHead">
+        <strong>Link ${idx+1}</strong>
+        <div class="actions">
+          <button class="secondary tiny" type="button" data-clear-custom="${idx}">Clear</button>
+          <button class="danger tiny" type="button" data-remove-custom="${idx}">Remove</button>
+        </div>
+      </div>
+
+      <div class="row"><label>Prompt text (e.g., “Need help preparing for an interview?”)</label>
+        <input data-k="prompt" data-i="${idx}" value="${escAttr(x.prompt)}"></div>
+
+      <div class="grid">
+        <div class="row"><label>Link text</label><input data-k="linkText" data-i="${idx}" value="${escAttr(x.linkText)}"></div>
+        <div class="row"><label>URL</label><input data-k="url" data-i="${idx}" value="${escAttr(x.url)}"></div>
+      </div>
+    `;
+    root.appendChild(el);
+  });
+
+  root.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = Number(inp.dataset.i);
+      const k = inp.dataset.k;
+      state.customLinks[i][k] = inp.value;
+      saveState();
+    });
+  });
+
+  root.querySelectorAll("[data-clear-custom]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.clearCustom);
+      state.customLinks[i] = blankCustomLink();
+      saveState();
+      renderCustomLinksUI();
+    });
+  });
+
+  root.querySelectorAll("[data-remove-custom]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.removeCustom);
+      state.customLinks.splice(i, 1);
+      if (state.customLinks.length === 0) state.customLinks.push(blankCustomLink());
+      saveState();
+      renderCustomLinksUI();
+    });
+  });
+}
+
+document.getElementById("addCustomLinkBtn").addEventListener("click", () => {
+  state.customLinks.push(blankCustomLink());
+  saveState();
+  renderCustomLinksUI();
+});
+document.getElementById("clearAllCustomLinksBtn").addEventListener("click", () => {
+  state.customLinks = [blankCustomLink()];
+  saveState();
+  renderCustomLinksUI();
+});
+
+/** ------------------------ Clear buttons (single sections) ------------------------ **/
+function clearInputs(ids){
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = "";
+  });
+}
+document.getElementById("clearLsatBtn").addEventListener("click", () => {
+  clearInputs(["lsat_quote","lsat_youtube_url","lsat_spotify_url","lsat_img","lsat_alt","lsat_desc"]);
+});
+document.getElementById("clearAdmBtn").addEventListener("click", () => {
+  clearInputs(["adm_youtube_url","adm_spotify_url","adm_img","adm_alt","adm_intro","adm_desc","adm_bullets"]);
+});
+document.getElementById("clearBlogBtn").addEventListener("click", () => {
+  clearInputs(["blog_title","blog_url","blog_author","blog_avatar","blog_desc"]);
+});
+
+/** ------------------------ email shell + section wrapper ------------------------ **/
+function emailShell({ preheader, sectionsHtml, unsubUrl }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>7Sage Newsletter</title>
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@media only screen and (max-width:600px){
+  .container{ width:100% !important; max-width:100% !important; }
+  .inner{ width:100% !important; max-width:100% !important; }
+  .pad{ padding-left:16px !important; padding-right:16px !important; }
+}
+</style>
+</head>
+
+<body style="Margin:0; padding:0; background-color:#f1ede9;">
+  <div style="display:none; font-size:1px; color:#ffffff; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
+    ${preheader}<span>&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847;</span>
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f1ede9;">
+    <tr>
+      <td align="center" style="padding:16px 0;">
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"
+               style="width:600px; background-color:#f1ede9; border-collapse:separate; border-radius:16px; box-shadow:1px 1px 12px 1px #e5e7eb;">
+
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color:#fefcfa; border-radius:16px 16px 0 0; padding:24px 0">
+              <a href="https://7sage.com/" target="_blank" style="text-decoration:none; display:inline-block;">
+                <img src="https://ik.imagekit.io/7sagelsat/Logo%20-%207Sage%20LSAT%20-%20b2r2-1%20(1).png?updatedAt=1760637846510"
+                  alt="7Sage" width="240"
+                  style="display:block; width:240px; height:auto; border:0; outline:none; text-decoration:none;">
+              </a>
+            </td>
+          </tr>
+
+          ${sectionsHtml}
+
+          <!-- FOOTER -->
+<tr>
+  <td align="center" style="background-color:#344054; border-radius:0 0 16px 16px; padding:32px 20px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="padding-top:16px">
+      <tr>
+        <td align="center" style="font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:700; color:#ffffff; padding-bottom:8px;">
+          The LSAT is hard.
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:700; color:#ffffff;">
+          We'll help you <mark style="padding:2px; color:#344054; background-color:#ffd279">crush it anyway.</mark>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Social icons row -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="padding-top:16px;">
+      <tr>
+        <td align="center" style="padding:0 12px;">
+          <a href="https://www.youtube.com/c/7sage" target="_blank">
+  <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/youtube_icon.png?updatedAt=1765812785920"
+       width="48" height="36" alt="YouTube" style="display:block; border:0;">
+</a>
+
+        </td>
+        <td align="center" style="padding:0 12px;">
+          <a href="https://www.tiktok.com/@7sagelsat" target="_blank">
+            <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/tiktok_icon.png?updatedAt=1765812785841"
+     width="28" height="28"
+     alt="TikTok"
+     style="display:block; border:0;">
+
+
+          </a>
+        </td>
+        <td align="center" style="padding:0 12px;">
+          <a href="https://www.instagram.com/7sage/" target="_blank">
+            <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/instagram_icon.png?updatedAt=1765812785783"
+     width="32" height="32"
+     alt="Instagram"
+     style="display:block; border:0;">
+
+          </a>
+        </td>
+
+        <!-- Divider -->
+        <td align="center" style="padding:0 16px;">
+          <div style="width:1px; height:40px; background-color:#667085; display:inline-block;"></div>
+        </td>
+
+        <!-- Podcasts link -->
+        <td align="center" style="padding:0 12px;">
+          <a href="https://open.spotify.com/show/1IYx61IAEHDWfq1Q7Xhq5l"
+             target="_blank"
+             style="font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:16px; font-weight:700; color:#98A2B3; text-decoration:none;">
+            Podcasts
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Unsubscribe -->
+    <div style="margin-top:20px;">
+      <a href="${unsubUrl}" target="_blank"
+         style="font-family:'Lexend', Helvetica, Arial, sans-serif;
+                font-size:14px; font-weight:600; color:#98A2B3; text-decoration:none;">
+        Unsubscribe
+      </a>
+    </div>
+  </td>
+</tr>
+
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function sectionWrapper(bg, innerHtml){
+  return `
+<tr>
+  <td style="padding:0; background-color:${bg};">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="background-color:${bg}; border-bottom:2px solid #e5e7eb;">
+      <tr>
+        <td align="center" style="padding:16px 8px 20px 8px; background-color:${bg};">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560"
+                 style="width:560px; background-color:${bg};">
+            ${innerHtml}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>`;
+}
+
+/** ------------------------ section builders ------------------------ **/
+function buildPodcastSection(bg, { header, quote, yt, sp, img, alt, desc, headerColor }){
+  const headerSafe = escHtml(header);
+  const quoteSafe = escHtml(quote);
+  const ytSafe = escAttr(yt);
+  const spSafe = escAttr(sp);
+  const imgSafe = escAttr(img);
+  const altSafe = escHtml(alt);
+  const descSafe = paragraphsToBr(desc);
+  const hColor = escAttr(headerColor || "#227f9c");
+
+  const inner = `
+<tr><td align="center" style="font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:700; color:${hColor}; padding-bottom:12px;">${headerSafe}</td></tr>
+${quoteSafe ? `<tr><td align="left" style="padding:8px 20px; font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:15px; line-height:1.5; color:#344054; font-weight:700;">${quoteSafe}</td></tr>` : ""}
+${imgSafe && ytSafe ? `<tr><td align="center" style="padding-bottom:12px;">
+  <a href="${ytSafe}" target="_blank">
+    <img src="${imgSafe}" width="560" alt="${altSafe}"
+      style="display:block; max-width:90%; border-radius:18px; height:auto; box-shadow:1px 1px 64px 8px #e5e7eb; border:2px solid #e5e7eb">
+  </a>
+</td></tr>` : ""}
+${descSafe ? `<tr><td align="left" style="padding:0 20px; font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:15px; line-height:1.5; color:#344054;">${descSafe}</td></tr>` : ""}
+${(ytSafe || spSafe) ? `<tr><td align="center" style="padding-top:8px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      ${ytSafe ? `<td align="center" style="padding:0 4px;">
+  <a href="${ytSafe}" target="_blank"
+    style="display:inline-block; background-color:#ffffff; padding:8px 14px;
+           border-radius:8px; border:2px solid #e5e7eb;
+           font-family:'Lexend', Helvetica, Arial, sans-serif;
+           font-size:16px; font-weight:700; color:#344054;
+           text-decoration:none; white-space:nowrap;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/YouTube_full-color_icon_%282024%29.svg/330px-YouTube_full-color_icon_%282024%29.svg.png"
+         width="24" height="14" alt=""
+         style="vertical-align:-1px; margin-right:6px; display:inline-block;">
+    Watch
+  </a>
+</td>` : ""}
+
+      ${spSafe ? `<td align="center" style="padding:0 4px;">
+  <a href="${spSafe}" target="_blank"
+    style="display:inline-block; background-color:#ffffff; padding:8px 14px;
+           border-radius:8px; border:2px solid #e5e7eb;
+           font-family:'Lexend', Helvetica, Arial, sans-serif;
+           font-size:16px; font-weight:700; color:#344054;
+           text-decoration:none; white-space:nowrap;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/250px-Spotify_icon.svg.png"
+         width="14" height="14" alt=""
+         style="vertical-align:-1px; margin-right:6px; display:inline-block;">
+    Listen
+  </a>
+</td>` : ""}
+    </tr>
+  </table>
+</td></tr>` : ""}`;
+
+  return sectionWrapper(bg, inner);
+}
+
+function buildAdmissionsPodcast(bg){
+  return buildPodcastSection(bg, {
+    header: document.getElementById("adm_header").value || "Admissions Podcast",
+    quote: "",
+    yt: document.getElementById("adm_youtube_url").value,
+    sp: document.getElementById("adm_spotify_url").value,
+    img: document.getElementById("adm_img").value,
+    alt: document.getElementById("adm_alt").value,
+    desc: (document.getElementById("adm_intro").value || "") + (document.getElementById("adm_desc").value ? ("\n\n" + document.getElementById("adm_desc").value) : ""),
+    headerColor: "#15b79e"
+  })
+  .replace(
+    "</td></tr>",
+    (() => {
+      const bullets = document.getElementById("adm_bullets").value;
+      const li = linesToLi(bullets);
+      if (!li) return "</td></tr>";
+      return `<br><br><ul align="left" style="margin:0; padding:0 0 0 18px; list-style-position:outside;">${li}</ul></td></tr>`;
+    })()
+  );
+}
+
+function buildAdmissionsBlog(bg){
+  const header = escHtml(document.getElementById("blog_header").value || "Admissions Blog");
+  const title = escHtml(document.getElementById("blog_title").value);
+  const url = escAttr(document.getElementById("blog_url").value);
+  const author = escHtml(document.getElementById("blog_author").value);
+  const avatar = escAttr(document.getElementById("blog_avatar").value);
+  const desc = paragraphsToBr(document.getElementById("blog_desc").value);
+  const cta = escHtml(document.getElementById("blog_cta").value || "Read more");
+
+  const inner = `
+<tr><td align="center" style="font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:700; color:#15b79e; padding-bottom:12px;">${header}</td></tr>
+<tr><td align="center">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="90%" style="width:90%;">
+    ${title && url ? `<tr><td align="left" style="padding-top:4px;">
+      <a href="${url}" target="_blank"
+        style="font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:800; line-height:1.3; color:#344054; text-decoration:none;">
+        ${title}
+      </a>
+    </td></tr>` : ""}
+    ${(author || avatar) ? `<tr><td align="left" style="padding-top:8px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          ${avatar ? `<td width="24" valign="middle">
+            <img src="${avatar}" width="24" height="24" style="display:block; border-radius:50%; border:2px solid #e5e7eb;" alt="">
+          </td>` : ""}
+          ${author ? `<td valign="middle" style="padding-left:8px; font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:16px; color:#15b79e;">
+            <span style="font-weight:800;">${author}</span>
+          </td>` : ""}
+        </tr>
+      </table>
+    </td></tr>` : ""}
+    ${desc ? `<tr><td align="left" style="padding-top:10px; font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:15px; line-height:1.5; color:#344054;">
+      ${desc}
+    </td></tr>` : ""}
+    ${(url && (title || desc)) ? `<tr><td align="center" style="padding-top:16px;">
+      <a href="${url}" target="_blank"
+  style="display:inline-block; background-color:#15b79e; padding:10px 20px;
+         border-radius:10px; font-family:'Lexend', Helvetica, Arial, sans-serif;
+         font-size:14px; font-weight:900; color:#ffffff; text-decoration:none;">
+  ${cta}
+  <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/rightchevron.png"
+       width="16" height="16"
+       alt="›"
+       style="vertical-align:middle; margin-left:8px;">
+</a>
+
+    </td></tr>` : ""}
+  </table>
+</td></tr>`;
+  return sectionWrapper(bg, inner);
+}
+
+function buildDiscussion(bg){
+  const divider = `<div style="height:1px; border-top:2px solid #e5e7eb; margin:14px 0;"></div>`;
+  const postsHtml = state.discussion.map((p, i) => {
+    const topic = byId(presets.topics, p.topicId);
+    const mood = byId(presets.moods, p.moodId);
+
+    const moodHtml = (mood && mood.id !== "none" && mood.label)
+      ? `<span style="display:inline-block; padding:2px 6px; background-color:${escAttr(mood.bg)}; border-radius:999px;
+                       font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:12px; font-weight:800; color:${escAttr(mood.text)};
+                       line-height:1.2; white-space:nowrap;">${escHtml(mood.label)}</span>`
+      : "";
+
+    return `
+      <div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td valign="top" width="32" style="width:32px; padding-right:10px;">
+              ${p.avatar ? `<img src="${escAttr(p.avatar)}" width="32" height="32" style="display:block; border-radius:50%; background-color:#f9fafb;" alt="">` : ""}
+            </td>
+            <td valign="top">
+              <div style="font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:13px; font-weight:800; color:#227f9c; line-height:1.3;">
+                ${escHtml(topic?.label || "")} ${p.when ? `<span style="color:#898989; font-weight:500">• ${escHtml(p.when)}</span>` : ""}
+              </div>
+              <div style="font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:13px; color:#667085; line-height:1.3; margin-top:2px;">
+                ${p.username ? `<span style="font-weight:800; color:#344054;">${escHtml(p.username)}</span>` : ""} ${moodHtml}
+              </div>
+            </td>
+          </tr>
+          ${p.title ? `<tr>
+            <td colspan="2" style="padding-top:10px;">
+              ${p.url ? `<a href="${escAttr(p.url)}" target="_blank"
+                 style="font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:700; color:#227f9c; line-height:1.3; text-decoration:none;">
+                ${escHtml(p.title)}
+              </a>` : `<div style="font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:700; color:#227f9c; line-height:1.3;">${escHtml(p.title)}</div>`}
+            </td>
+          </tr>` : ""}
+        </table>
+      </div>
+      ${i < state.discussion.length - 1 ? divider : ""}`;
+  }).join("");
+
+  const inner = `
+<tr><td align="center" style="font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:800; color:#227f9c; padding-bottom:12px;">
+  Discussion Forum Roundup
+</td></tr>
+<tr><td align="center">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+         style="margin-top:4px; box-shadow:1px 1px 12px 1px #e5e7eb; border-radius:18px;">
+    <tr><td style="background:#ffffff; border:3px solid #e5e7eb; border-radius:18px; padding:16px 20px;">
+      ${postsHtml}
+    </td></tr>
+  </table>
+</td></tr>`;
+  return sectionWrapper(bg, inner);
+}
+
+function buildLiveClasses(bg){
+  const dot = (color) => `<span style="display:inline-block; width:8px; height:8px; border-radius:2px; background-color:${color}; margin-right:4px;"></span>`;
+
+  const rows = state.classes.map(r => {
+    const instr = byId(presets.instructors, r.instructorId) || presets.instructors[0] || { avatar:"" };
+    const diff = byId(presets.difficulties, r.difficultyId) || presets.difficulties[0] || { label:"", filledCount:1, filled:"#2a6c7f", empty:"#e5eef2" };
+    const filledCount = Math.max(0, Math.min(3, Number(diff.filledCount ?? 1)));
+    const dots = [0,1,2].map(i => dot(i < filledCount ? escAttr(diff.filled) : escAttr(diff.empty))).join("");
+
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid #e5e7eb;">
+        <tr>
+          <td valign="middle" width="120" style="width:120px; padding:14px 12px; font-family:'Lexend', Helvetica, Arial, sans-serif; color:#1f2d3d;">
+            <div style="font-size:18px; font-weight:800; line-height:1.2;">${escHtml(r.time)}</div>
+            <div style="font-size:14px; font-weight:700; color:#6b7280; line-height:1.2;">${escHtml(r.date)}</div>
+          </td>
+
+          <td valign="middle" width="36" style="width:36px; padding:14px 10px;">
+            ${instr.avatar ? `<img src="${escAttr(instr.avatar)}" width="36" height="36"
+                 style="display:block; border-radius:50%; border:2px solid #e5e7eb;" alt="">` : ""}
+          </td>
+
+          <td valign="middle" style="padding:14px 0; font-family:'Lexend', Helvetica, Arial, sans-serif; color:#1f2d3d;">
+            <div style="font-size:14px; font-weight:800; color:#2a6c7f; line-height:1.2;">
+              ${r.url ? `<a href="${escAttr(r.url)}" target="_blank" style="color:#2a6c7f; text-decoration:none;">${escHtml(r.title)}</a>` : escHtml(r.title)}
+            </div>
+            <div style="margin-top:6px; font-size:14px; color:#6b7280; white-space:nowrap; display:inline-block; font-weight:700;">
+              ${dots}<span style="margin-left:4px;">${escHtml(diff.label)}</span>
+            </div>
+          </td>
+
+          <td valign="middle" align="right" width="140" style="width:140px; padding:14px 12px;">
+            ${r.url ? `<a href="${escAttr(r.url)}" target="_blank"
+               style="display:inline-block; background-color:#227f9c; color:#ffffff;
+                      font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:14px;
+                      font-weight:900; padding:12px 22px; border-radius:8px; text-decoration:none;">
+              RSVP
+            </a>` : ""}
+          </td>
+        </tr>
+      </table>`;
+  }).join("");
+
+  const inner = `
+<tr><td align="center">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+         style="margin-top:12px; box-shadow:1px 1px 12px 1px #e5e7eb; border-radius:18px">
+    <tr><td style="padding:16px 20px; background:#ffffff; border:3px solid #e5e7eb; border-bottom:0; border-radius:17px 17px 0 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <!-- Calendar icon -->
+    <td valign="middle" width="28">
+      <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/calendar.png"
+           width="20" height="20" alt=""
+           style="display:block;">
+    </td>
+
+    <!-- Title -->
+    <td valign="middle"
+        style="font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:900; color:#1f2d3d;">
+      Free Live Classes
+    </td>
+
+    <!-- Right chevron -->
+    <td valign="middle" align="right" width="20">
+      <img src="https://ik.imagekit.io/7sage/Newsletter%20Files/Newsletter%20Files%202/rightchevron.png"
+           width="16" height="16" alt="›"
+           style="display:block;">
+    </td>
+  </tr>
+</table>
+
+    </td></tr>
+    <tr><td style="background:#ffffff; border-left:3px solid #e5e7eb; border-right:3px solid #e5e7eb;">
+      ${rows}
+    </td></tr>
+    <tr><td style="background:#ffffff; border-left:3px solid #e5e7eb; border-right:3px solid #e5e7eb; border-bottom:3px solid #e5e7eb; border-radius:0 0 17px 17px; height:14px; font-size:0;">&nbsp;</td></tr>
+  </table>
+</td></tr>`;
+  return sectionWrapper(bg, inner);
+}
+
+function buildCustomLinks(bg){
+  const blocks = state.customLinks
+    .filter(x => (x.prompt || x.linkText || x.url))
+    .map(x => {
+      const prompt = escHtml(x.prompt);
+      const linkText = escHtml(x.linkText);
+      const url = escAttr(x.url);
+      const link = (url && linkText)
+        ? `<a href="${url}" style="color:#227f9c; text-decoration:none; font-weight:800;">${linkText}</a>`
+        : (linkText || "");
+      const joined = [prompt, link].filter(Boolean).join(" ");
+      return `<div style="margin-bottom:14px;">${joined}</div>`;
+    }).join("");
+
+  const inner = `
+<tr><td align="left" style="padding:0 20px 8px 20px; font-family:'Lexend', Helvetica, Arial, sans-serif; font-size:15px; line-height:1.5; color:#344054;">
+  ${blocks || ""}
+</td></tr>`;
+  return sectionWrapper(bg, inner);
+}
+
+/** ------------------------ generation (alternating backgrounds) ------------------------ **/
+function buildSectionsHtml(){
+  const enabled = state.sections.filter(s => s.enabled);
+  const colors = ["#fefcfa", "#fcfaf8"];
+  let out = "";
+  let idx = 0;
+
+  for (const s of enabled) {
+    const bg = colors[idx % 2];
+    idx++;
+
+    if (s.id === "lsatPodcast") {
+      out += buildPodcastSection(bg, {
+        header: document.getElementById("lsat_header").value || "LSAT Podcast",
+        quote: document.getElementById("lsat_quote").value,
+        yt: document.getElementById("lsat_youtube_url").value,
+        sp: document.getElementById("lsat_spotify_url").value,
+        img: document.getElementById("lsat_img").value,
+        alt: document.getElementById("lsat_alt").value,
+        desc: document.getElementById("lsat_desc").value
+      });
+    } else if (s.id === "admissionsPodcast") out += buildAdmissionsPodcast(bg);
+    else if (s.id === "admissionsBlog") out += buildAdmissionsBlog(bg);
+    else if (s.id === "discussion") out += buildDiscussion(bg);
+    else if (s.id === "liveClasses") out += buildLiveClasses(bg);
+    else if (s.id === "customLinks") out += buildCustomLinks(bg);
+  }
+  return out;
+}
+
+function generateHtml(){
+  const preheader = escHtml(document.getElementById("preheader").value);
+  const unsubUrl = escAttr(document.getElementById("unsubscribe_url").value || "{{unsubscribe_url}}");
+  const sectionsHtml = buildSectionsHtml();
+
+  const html = emailShell({ preheader, sectionsHtml, unsubUrl });
+  document.getElementById("output").value = html;
+  document.getElementById("preview").srcdoc = html;
+}
+
+/** ------------------------ export/import ------------------------ **/
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  const blob = JSON.stringify({ presets, state }, null, 2);
+  try { await navigator.clipboard.writeText(blob); alert("Copied JSON to clipboard."); }
+  catch { prompt("Copy JSON:", blob); }
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  const raw = prompt("Paste exported JSON:");
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.presets) presets = parsed.presets;
+    if (parsed.state) state = parsed.state;
+    savePresets(); saveState();
+    (async function init() {
+  try {
+    const shared = await apiLoadPresets();
+    if (shared) presets = shared;
+  } catch (e) {
+    console.warn("Using default presets:", e.message);
+  }
+
+  renderAdminAll();
+  renderSectionsUI();
+  renderDiscussionUI();
+  renderClassesUI();
+  renderCustomLinksUI();
+  generateHtml();
+})();
+
+    alert("Imported.");
+  } catch (e) {
+    alert("Import failed: " + e.message);
+  }
+});
+
+/** ------------------------ buttons ------------------------ **/
+document.getElementById("generateBtn").addEventListener("click", generateHtml);
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  if (!document.getElementById("output").value.trim()) generateHtml();
+  try {
+    await navigator.clipboard.writeText(document.getElementById("output").value);
+    alert("Copied HTML to clipboard.");
+  } catch {
+    alert("Clipboard copy failed. Copy manually from Output HTML.");
+  }
+});
+
+/** ------------------------ init ------------------------ **/
+renderAdminAll();
+renderSectionsUI();
+renderDiscussionUI();
+renderClassesUI();
+renderCustomLinksUI();
+generateHtml();
+</script>
+</body>
+</html>
