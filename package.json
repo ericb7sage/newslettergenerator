@@ -15,4 +15,8 @@
     "cheerio": "^1.0.0-rc.12",
     "@supabase/supabase-js": "^2.39.3"
   }
+{
+  "engines": {
+    "node": ">=20"
+  }
 }
