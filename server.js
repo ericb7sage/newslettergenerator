@@ -59,6 +59,12 @@ function firstMatchFromLinks($, predicate) {
   return "";
 }
 
+function parseFirstUrlFromSrcset(srcset) {
+  if (!srcset) return "";
+  const first = String(srcset).split(",")[0]?.trim() || "";
+  return first.split(/\s+/)[0] || "";
+}
+
 function findTopic($) {
   // Try to find a topic/category link.
   // Exclude:
@@ -82,8 +88,8 @@ function findTopic($) {
   };
 }
 
-function findUsername($, html) {
-  // 1) Most likely: profile links
+function findUsername($) {
+  // Primary: discussion profile links
   let username =
     firstText($, [
       'a[href^="/discussion/profile/"]',
@@ -93,53 +99,37 @@ function findUsername($, html) {
     ]) ||
     firstMatchFromLinks($, (href) => href.startsWith("/discussion/profile/"));
 
-  if (username) return username.trim();
-
-  // 2) Fallback: sometimes username appears in meta text without profile link
-  // Try common patterns (best-effort)
-  username =
-    firstText($, [
-      '[class*="Author"]',
-      '[class*="author"]',
-      '[class*="Byline"]',
-      '[class*="byline"]'
-    ]);
-
-  if (username) return username.trim();
-
-  // 3) Last resort: try JSON-LD (if present)
-  try {
-    let ld = null;
-    $('script[type="application/ld+json"]').each((_, el) => {
-      if (ld) return;
-      const raw = $(el).text().trim();
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      const hit = arr.find(o => o && (o["@type"] === "DiscussionForumPosting" || o["@type"] === "Article" || o["@type"] === "WebPage"));
-      if (hit) ld = hit;
-    });
-    const ldAuthor = ld?.author?.name || ld?.author?.[0]?.name || "";
-    if (ldAuthor) return String(ldAuthor).trim();
-  } catch {}
-
-  return "";
+  return (username || "").trim();
 }
 
 function findAvatar($, html) {
-  // Prefer gravatar
+  // 1) Explicit avatar img
   let src = firstAttr($, [
-    'img[src*="gravatar"]',
     'img[class*="Avatar"][src]',
     'img[class*="avatar"][src]',
     'img[alt*="Avatar"][src]',
     'img[alt*="avatar"][src]'
   ], "src");
-
   if (src) return absUrl(src);
 
-  // Fallback: scan for gravatar in raw HTML (sometimes in srcset)
-  const m = html.match(/https?:\/\/www\.gravatar\.com\/avatar\/[^"'\s)]+/i);
+  // 2) ImageKit hosted avatars (uploaded pics)
+  src = firstAttr($, ['img[src*="imagekit.io"]'], "src");
+  if (src) return absUrl(src);
+
+  // 3) srcset fallback
+  const srcset = firstAttr($, [
+    'img[class*="Avatar"][srcset]',
+    'img[class*="avatar"][srcset]',
+    'img[alt*="Avatar"][srcset]',
+    'img[alt*="avatar"][srcset]',
+    'img[srcset*="imagekit.io"]'
+  ], "srcset");
+
+  const u = parseFirstUrlFromSrcset(srcset);
+  if (u) return absUrl(u);
+
+  // 4) Last resort: any imagekit URL in the HTML
+  const m = html.match(/https?:\/\/ik\.imagekit\.io\/[^"' )]+/i);
   if (m) return m[0];
 
   return "";
@@ -154,24 +144,10 @@ function findWhen($, html) {
   if (when) return when.replace(/\s+/g, " ").trim();
 
   // Fallback: common relative text such as "Edited 21 mins ago"
-  const m = html.match(/\bEdited\s+\d+\s+\w+\s+ago\b/i) || html.match(/\b\d+\s+\w+\s+ago\b/i);
+  const m =
+    html.match(/\bEdited\s+\d+\s+\w+\s+ago\b/i) ||
+    html.match(/\b\d+\s+\w+\s+ago\b/i);
   if (m) return m[0].replace(/\s+/g, " ").trim();
-
-  // Last resort: JSON-LD dates if present
-  try {
-    let ld = null;
-    $('script[type="application/ld+json"]').each((_, el) => {
-      if (ld) return;
-      const raw = $(el).text().trim();
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      const hit = arr.find(o => o && (o["@type"] === "DiscussionForumPosting" || o["@type"] === "Article" || o["@type"] === "WebPage"));
-      if (hit) ld = hit;
-    });
-    const date = ld?.dateModified || ld?.datePublished || "";
-    if (date) return String(date).trim();
-  } catch {}
 
   return "";
 }
@@ -204,10 +180,12 @@ app.post("/scrape-discussion", async (req, res) => {
     const html = await r.text();
     const $ = cheerio.load(html);
 
-    const title = ($("h1").first().text() || "").trim() || ($("title").text() || "").trim();
+    const title =
+      ($("h1").first().text() || "").trim() ||
+      ($("title").text() || "").trim();
 
     const { topic, topicUrl } = findTopic($);
-    const username = findUsername($, html);
+    const username = findUsername($);
     const avatar = findAvatar($, html);
     const when = findWhen($, html);
 
