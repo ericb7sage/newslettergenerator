@@ -1,13 +1,15 @@
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import fs from "node:fs/promises";
 
 const app = express();
-app.use(express.json({ limit: "200kb" }));
+app.use(express.json({ limit: "500kb" }));
 
 const DEBUG = process.env.DEBUG === "1";
+const PRESETS_PATH = process.env.PRESETS_PATH || "./presets.json";
 
-// CORS so CodePen can call this proxy
+/** ------------------------ CORS (so CodePen can call this proxy) ------------------------ **/
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*"); // tighten later if desired
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -16,11 +18,127 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health route so Railway can verify the service responds
+/** ------------------------ Health route ------------------------ **/
 app.get("/", (req, res) => {
   res.status(200).send("ok");
 });
 
+/** ------------------------ Default presets (shared) ------------------------ **/
+const DEFAULT_PRESETS = {
+  moods: [
+    { id: "motivated", label: "💪 Motivated", bg: "#ebf7fb", text: "#344054" },
+    { id: "frustrated", label: "😖 Frustrated", bg: "#f8d4e4", text: "#344054" },
+    { id: "happy", label: "😊 Happy", bg: "#f0fdf9", text: "#344054" },
+    { id: "none", label: "(None)", bg: "#ffffff", text: "#344054" }
+  ],
+  topics: [
+    { id: "general", label: "General" },
+    { id: "lsat", label: "LSAT" },
+    { id: "admissions", label: "Admissions" }
+  ],
+  instructors: [
+    { id: "instructor_1", name: "Instructor 1", avatar: "" }
+  ],
+  difficulties: [
+    { id: "basic", label: "Basic", filledCount: 1, filled: "#2a6c7f", empty: "#e5eef2" },
+    { id: "intermediate", label: "Intermediate", filledCount: 2, filled: "#15b79e", empty: "#e5eef2" },
+    { id: "advanced", label: "Advanced", filledCount: 3, filled: "#227f9c", empty: "#e5eef2" }
+  ]
+};
+
+function isObject(x) {
+  return x && typeof x === "object" && !Array.isArray(x);
+}
+
+function normalizePresets(p) {
+  // Very light validation/sanitization. Keeps you from saving totally broken shapes.
+  if (!isObject(p)) return structuredClone(DEFAULT_PRESETS);
+
+  const out = structuredClone(DEFAULT_PRESETS);
+
+  if (Array.isArray(p.moods)) out.moods = p.moods.filter(isObject).map(m => ({
+    id: String(m.id ?? "").trim() || "mood_" + Math.random().toString(16).slice(2),
+    label: String(m.label ?? ""),
+    bg: String(m.bg ?? "#ffffff"),
+    text: String(m.text ?? "#344054")
+  }));
+
+  if (Array.isArray(p.topics)) out.topics = p.topics.filter(isObject).map(t => ({
+    id: String(t.id ?? "").trim() || "topic_" + Math.random().toString(16).slice(2),
+    label: String(t.label ?? "")
+  }));
+
+  if (Array.isArray(p.instructors)) out.instructors = p.instructors.filter(isObject).map(i => ({
+    id: String(i.id ?? "").trim() || "instructor_" + Math.random().toString(16).slice(2),
+    name: String(i.name ?? ""),
+    avatar: String(i.avatar ?? "")
+  }));
+
+  if (Array.isArray(p.difficulties)) out.difficulties = p.difficulties.filter(isObject).map(d => ({
+    id: String(d.id ?? "").trim() || "difficulty_" + Math.random().toString(16).slice(2),
+    label: String(d.label ?? ""),
+    filledCount: Math.max(1, Math.min(3, Number(d.filledCount ?? 1))),
+    filled: String(d.filled ?? "#2a6c7f"),
+    empty: String(d.empty ?? "#e5eef2")
+  }));
+
+  // Ensure required items exist
+  if (!out.moods.some(m => m.id === "none")) out.moods.push({ id: "none", label: "(None)", bg: "#ffffff", text: "#344054" });
+  if (out.topics.length === 0) out.topics = structuredClone(DEFAULT_PRESETS.topics);
+  if (out.instructors.length === 0) out.instructors = structuredClone(DEFAULT_PRESETS.instructors);
+  if (out.difficulties.length === 0) out.difficulties = structuredClone(DEFAULT_PRESETS.difficulties);
+
+  return out;
+}
+
+let presetsCache = structuredClone(DEFAULT_PRESETS);
+
+async function loadPresetsFromDisk() {
+  try {
+    const raw = await fs.readFile(PRESETS_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+    presetsCache = normalizePresets(parsed);
+    if (DEBUG) console.log("Loaded presets from disk:", PRESETS_PATH);
+  } catch (e) {
+    // If file doesn't exist or is invalid, keep defaults and try to write it.
+    presetsCache = structuredClone(DEFAULT_PRESETS);
+    try {
+      await fs.writeFile(PRESETS_PATH, JSON.stringify(presetsCache, null, 2), "utf8");
+      if (DEBUG) console.log("Wrote default presets to disk:", PRESETS_PATH);
+    } catch (writeErr) {
+      if (DEBUG) console.warn("Could not write presets file:", writeErr.message);
+    }
+  }
+}
+
+async function savePresetsToDisk(newPresets) {
+  presetsCache = normalizePresets(newPresets);
+  await fs.writeFile(PRESETS_PATH, JSON.stringify(presetsCache, null, 2), "utf8");
+}
+
+/** ------------------------ Presets endpoints (shared across users) ------------------------ **/
+app.get("/presets", async (req, res) => {
+  try {
+    return res.json({ ok: true, presets: presetsCache });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post("/presets", async (req, res) => {
+  try {
+    const incoming = req.body?.presets;
+    if (!incoming) {
+      return res.status(400).json({ ok: false, error: "Missing body.presets" });
+    }
+    await savePresetsToDisk(incoming);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/** ------------------------ Scrape helpers ------------------------ **/
 function absUrl(maybeRelative) {
   if (!maybeRelative) return "";
   const s = String(maybeRelative).trim();
@@ -66,11 +184,6 @@ function parseFirstUrlFromSrcset(srcset) {
 }
 
 function findTopic($) {
-  // Try to find a topic/category link.
-  // Exclude:
-  // - profile links
-  // - numeric post links (/discussion/54829/...)
-  // - /discussion root
   const $topicLink = $('a[href^="/discussion/"]')
     .filter((_, a) => {
       const href = ($(a).attr("href") || "").trim();
@@ -89,21 +202,18 @@ function findTopic($) {
 }
 
 function findUsername($) {
-  // Primary: discussion profile links
   let username =
     firstText($, [
       'a[href^="/discussion/profile/"]',
       'a[href*="/discussion/profile/"]',
       '[class*="UserLink"] a',
       '[class*="user"] a[href*="profile"]'
-    ]) ||
-    firstMatchFromLinks($, (href) => href.startsWith("/discussion/profile/"));
+    ]) || firstMatchFromLinks($, (href) => href.startsWith("/discussion/profile/"));
 
   return (username || "").trim();
 }
 
 function findAvatar($, html) {
-  // 1) Explicit avatar img
   let src = firstAttr($, [
     'img[class*="Avatar"][src]',
     'img[class*="avatar"][src]',
@@ -112,11 +222,9 @@ function findAvatar($, html) {
   ], "src");
   if (src) return absUrl(src);
 
-  // 2) ImageKit hosted avatars (uploaded pics)
   src = firstAttr($, ['img[src*="imagekit.io"]'], "src");
   if (src) return absUrl(src);
 
-  // 3) srcset fallback
   const srcset = firstAttr($, [
     'img[class*="Avatar"][srcset]',
     'img[class*="avatar"][srcset]',
@@ -128,7 +236,6 @@ function findAvatar($, html) {
   const u = parseFirstUrlFromSrcset(srcset);
   if (u) return absUrl(u);
 
-  // 4) Last resort: any imagekit URL in the HTML
   const m = html.match(/https?:\/\/ik\.imagekit\.io\/[^"' )]+/i);
   if (m) return m[0];
 
@@ -136,14 +243,12 @@ function findAvatar($, html) {
 }
 
 function findWhen($, html) {
-  // Best: <time datetime>
   let when =
     firstAttr($, ["time[datetime]"], "datetime") ||
     firstText($, ["time"]);
 
   if (when) return when.replace(/\s+/g, " ").trim();
 
-  // Fallback: common relative text such as "Edited 21 mins ago"
   const m =
     html.match(/\bEdited\s+\d+\s+\w+\s+ago\b/i) ||
     html.match(/\b\d+\s+\w+\s+ago\b/i);
@@ -152,10 +257,10 @@ function findWhen($, html) {
   return "";
 }
 
+/** ------------------------ Scrape endpoint ------------------------ **/
 app.post("/scrape-discussion", async (req, res) => {
   try {
     const url = String(req.body?.url || "").trim();
-
     if (DEBUG) console.log("RECEIVED url:", JSON.stringify(url));
 
     if (!url.startsWith("https://7sage.com/discussion/")) {
@@ -180,9 +285,8 @@ app.post("/scrape-discussion", async (req, res) => {
     const html = await r.text();
     const $ = cheerio.load(html);
 
-    const title =
-      ($("h1").first().text() || "").trim() ||
-      ($("title").text() || "").trim();
+    // Per your request: DO NOT scrape title. Leave blank so titles are custom.
+    const title = "";
 
     const { topic, topicUrl } = findTopic($);
     const username = findUsername($);
@@ -197,7 +301,7 @@ app.post("/scrape-discussion", async (req, res) => {
         hasEditedAgo: /Edited\s+\d+/i.test(html)
       });
       console.log("DEBUG scraped:", {
-        title,
+        title: "(forced blank)",
         topic,
         username: username || "(blank)",
         avatar: avatar ? "(found)" : "(blank)",
@@ -209,7 +313,7 @@ app.post("/scrape-discussion", async (req, res) => {
       ok: true,
       data: {
         url,
-        title,
+        title,     // always ""
         topic,
         topicUrl,
         username,
@@ -222,5 +326,9 @@ app.post("/scrape-discussion", async (req, res) => {
   }
 });
 
+/** ------------------------ Boot + listen ------------------------ **/
 const port = process.env.PORT || 3000;
+
+await loadPresetsFromDisk();
+
 app.listen(port, () => console.log("Proxy running on port", port));
