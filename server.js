@@ -251,10 +251,10 @@ app.get("/presets", async (req, res) => {
     const key = String(req.query.key || PRESET_KEY).trim() || "default";
 
     const { data, error } = await supabase
-      .from("newsletter_presets")
-      .select("key,data,updated_at")
-      .eq("key", key)
-      .maybeSingle();
+  .from("newsletter_presets")
+  .select("preset_key,data,updated_at")
+  .eq("preset_key", key)
+  .maybeSingle();
 
     if (error) return res.status(500).json({ ok: false, error: error.message });
 
@@ -286,14 +286,16 @@ app.put("/presets", async (req, res) => {
     }
 
     const payload = {
-      key,
-      data,
-      updated_at: new Date().toISOString(),
-    };
+  preset_key: key,
+  data,
+  updated_at: new Date().toISOString(),
+};
+
 
     const { error } = await supabase
       .from("newsletter_presets")
-      .upsert(payload, { onConflict: "key" });
+      .upsert(payload, { onConflict: "preset_key" });
+
 
     if (error) return res.status(500).json({ ok: false, error: error.message });
 
